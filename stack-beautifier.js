@@ -53,6 +53,9 @@ const STACK_LINE_MATCHERS = [
   { regex: /^at (.*)\:(\d+)\:(\d+)$/, idx: [1, 2, 3] }, // Format: at filename:13:12
   { regex: /^at (.*) \((.*)\:(\d+)\:(\d+)\)$/, idx: [1, 3, 4] }, // Format: at someFun (filename:13:12)
   { regex: /^at (.*)\:(\d+)$/, idx: [1, 2, 3] }, // Format: at filename:13
+  
+  // Funbers addition: This matches stack traces we get in fabric
+  { regex: /^ *at .* \+ \d+\((.*)\:(\d+)\:(\d+)\:.*$/, idx: [1, 2, 3] }, // Format: at .methodName + 13(filename:13:43:13)
 ];
 
 function main(program) {
@@ -113,14 +116,16 @@ function processStack(lines, sourceMapConsumer) {
     const line = lines[i];
     const match = matchStackLine(line);
     if (!match) {
-      if (i === 0) {
-        // we allow first line to contain trace message, we just pass it through to the result table
+      if (i <= 1) {
+        // we allow first two lines to contain trace message, we just pass it through to the result table
         result.push({ text: line });
       } else if (!line) {
         // we treat empty stack trace line as the end of an input
         break;
       } else {
-        throw new Error(`Stack trace parse error at line ${i + 1}: ${line}`);
+        console.warn(`could not parse line ${i + 1}: ${line}`);
+        // throw new Error(`Stack trace parse error at line ${i + 1}: ${line}`);
+        result.push({text: '  ' + line + ' <unknown>'});
       }
     } else {
       result.push(processMatchedLine(match, sourceMapConsumer));
